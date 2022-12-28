@@ -1,5 +1,5 @@
 network:
-  name: resnet18
+  name: ViT
 
   # Specify a folder containing a pre-trained model to fine-tune. If training from scratch, pass None.
   fine_tune_from: 'resnet-18_40-epochs'
@@ -13,7 +13,7 @@ data_transforms:
   input_shape: (96,96,3)
 
 trainer:
-  batch_size: 64
+  batch_size: 128
   m: 0.996 # momentum update
   checkpoint_interval: 5000
   max_epochs: 40

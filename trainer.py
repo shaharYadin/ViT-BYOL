@@ -59,6 +59,10 @@ class BYOLTrainer:
 
                 batch_view_1 = batch_view_1.to(self.device)
                 batch_view_2 = batch_view_2.to(self.device)
+                
+                sigma = 0.1
+                noise = (sigma * torch.randn(batch_view_1.shape)).to(self.device)
+                batch_view_1 += noise
 
                 if niter == 0:
                     grid = torchvision.utils.make_grid(batch_view_1[:32])
@@ -85,15 +89,15 @@ class BYOLTrainer:
     def update(self, batch_view_1, batch_view_2):
         # compute query feature
         predictions_from_view_1 = self.predictor(self.online_network(batch_view_1))
-        predictions_from_view_2 = self.predictor(self.online_network(batch_view_2))
+        # predictions_from_view_2 = self.predictor(self.online_network(batch_view_2)) 
 
         # compute key features
         with torch.no_grad():
-            targets_to_view_2 = self.target_network(batch_view_1)
+            # targets_to_view_2 = self.target_network(batch_view_1)
             targets_to_view_1 = self.target_network(batch_view_2)
 
         loss = self.regression_loss(predictions_from_view_1, targets_to_view_1)
-        loss += self.regression_loss(predictions_from_view_2, targets_to_view_2)
+        # loss += self.regression_loss(predictions_from_view_2, targets_to_view_2)
         return loss.mean()
 
     def save_model(self, PATH):
@@ -101,5 +105,6 @@ class BYOLTrainer:
         torch.save({
             'online_network_state_dict': self.online_network.state_dict(),
             'target_network_state_dict': self.target_network.state_dict(),
+            'predictor_network_state_dict': self.predictor.state_dict(),
             'optimizer_state_dict': self.optimizer.state_dict(),
         }, PATH)
