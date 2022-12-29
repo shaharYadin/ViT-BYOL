@@ -2,7 +2,7 @@ network:
   name: ViT
 
   # Specify a folder containing a pre-trained model to fine-tune. If training from scratch, pass None.
-  fine_tune_from: 'resnet-18_40-epochs'
+  checkpoints: 'checkpoints'
 
   projection_head:
     mlp_hidden_size: 512
@@ -12,17 +12,28 @@ data_transforms:
   s: 1
   input_shape: (96,96,3)
 
-trainer:
+trainer: #byol trainer
+  batch_size: 128
+  m: 0.996 # momentum update
+  checkpoint_interval: 5000
+  max_epochs: 300
+  num_workers: 4
+
+classifier_trainer:
   batch_size: 128
   m: 0.996 # momentum update
   checkpoint_interval: 5000
   max_epochs: 40
   num_workers: 4
 
-optuna: True
+mode: 'train_byol' #optuna/train_byol/train_classifier
 
 optimizer:
-  params:
+  params: #byol_params 
+    lr: 0.00034531672093345315
+    # momentum: 0.9
+    weight_decay: 0.0 #0.0004
+  classifier_params:
     lr: 0.003
     # momentum: 0.9
     weight_decay: 0.0 #0.0004

@@ -31,7 +31,7 @@ def get_cifar10(batch_size):
 def objective(trial,n_train_batches=30,n_valid_batches=10):
     
     trainer = define_model()
-    trainer.max_epochs = 10
+    trainer.max_epochs = 50
     # Generate the model.
     model = trainer.online_network.to(trainer.device)
     model_predictor = trainer.predictor.to(trainer.device)
