@@ -6,6 +6,7 @@ from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from utils import _create_model_training_folder
+from CosineWarmUp import CosineWarmupScheduler
 
 
 class BYOLTrainer:
@@ -48,6 +49,11 @@ class BYOLTrainer:
         train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
                                   num_workers=self.num_workers, drop_last=False, shuffle=True)
 
+        # Warm up schedular since we use ViT
+        warmup = 3 * len(train_loader)
+        max_iter = 50 * len(train_loader)
+        scheduler = CosineWarmupScheduler(self.optimizer, warmup=warmup, max_iters=max_iter)
+
         niter = 0
         model_checkpoints_folder = os.path.join(self.writer.log_dir, 'checkpoints')
 
@@ -80,6 +86,7 @@ class BYOLTrainer:
 
                 self._update_target_network_parameters()  # update the key encoder
                 niter += 1
+                scheduler.step()
 
             print("End of epoch {}".format(epoch_counter))
 

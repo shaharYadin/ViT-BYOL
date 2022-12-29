@@ -19,8 +19,10 @@ trainer:
   max_epochs: 40
   num_workers: 4
 
+optuna: True
+
 optimizer:
   params:
-    lr: 0.03
-    momentum: 0.9
-    weight_decay: 0.0004
+    lr: 0.003
+    # momentum: 0.9
+    weight_decay: 0.0 #0.0004
