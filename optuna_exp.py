@@ -15,17 +15,28 @@ import torchvision.transforms as transforms
 from define_model import define_model
 
 def get_cifar10(batch_size):
+    dataset= torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=True, download=True, transform=MultiViewDataInjector([transforms.ToTensor(), transforms.ToTensor()]))
+    
+    # valid_loader = torch.utils.data.DataLoader(
+    #     torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=False, transform=MultiViewDataInjector([transforms.ToTensor(), transforms.ToTensor()])),
+    #     batch_size=batch_size,
+    #     shuffle=True,
+    # )
+    val_size = int(len(dataset)*0.2)
+    train_size = len(dataset) - val_size
+    train_data, valid_data = torch.utils.data.random_split(dataset, [train_size, val_size])
+
     train_loader = torch.utils.data.DataLoader(
-        torchvision.datasets.CIFAR10('./datasets', train=True, download=True, transform=MultiViewDataInjector([transforms.ToTensor(), transforms.ToTensor()])),
-        batch_size=batch_size,
-        shuffle=True,
-    )
-    valid_loader = torch.utils.data.DataLoader(
-        torchvision.datasets.CIFAR10('./datasets', train=False, transform=MultiViewDataInjector([transforms.ToTensor(), transforms.ToTensor()])),
+        train_data,
         batch_size=batch_size,
         shuffle=True,
     )
 
+    valid_loader = torch.utils.data.DataLoader(
+        valid_data,
+        batch_size=batch_size,
+        shuffle=True,
+    )
     return train_loader, valid_loader
 
 def objective(trial,n_train_batches=30,n_valid_batches=10):
@@ -37,7 +48,7 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
     model_predictor = trainer.predictor.to(trainer.device)
 
     # Generate the optimizers.
-    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)  # log=True, will use log scale to interplolate between lr
+    lr = trial.suggest_float("lr", 1e-4, 1e-1, log=True)  # log=True, will use log scale to interplolate between lr
     trainer.optimizer = torch.optim.RAdam(list(model.parameters()) + list(model_predictor.parameters()), lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
     # optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
     # trainer.optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)

@@ -102,15 +102,15 @@ class BYOLTrainer:
     def update(self, batch_view_1, batch_view_2):
         # compute query feature
         predictions_from_view_1 = self.predictor(self.online_network(batch_view_1))
-        # predictions_from_view_2 = self.predictor(self.online_network(batch_view_2)) 
+        predictions_from_view_2 = self.predictor(self.online_network(batch_view_2)) 
 
         # compute key features
         with torch.no_grad():
-            # targets_to_view_2 = self.target_network(batch_view_1)
+            targets_to_view_2 = self.target_network(batch_view_1)
             targets_to_view_1 = self.target_network(batch_view_2)
 
         loss = self.regression_loss(predictions_from_view_1, targets_to_view_1)
-        # loss += self.regression_loss(predictions_from_view_2, targets_to_view_2)
+        loss += self.regression_loss(predictions_from_view_2, targets_to_view_2)
         return loss.mean()
 
     def save_model(self, PATH):
@@ -126,11 +126,11 @@ class BYOLTrainer:
 class ClassifierTrainer:
     def __init__(self, online_network, target_network, classifier, predictor, optimizer, device, **params):
         self.online_network = online_network
-        self.target_network = target_network
+        # self.target_network = target_network
         self.classifier = classifier
         self.optimizer = optimizer
         self.device = device
-        self.predictor = predictor
+        # self.predictor = predictor
         self.max_epochs = params['max_epochs']
         self.writer = SummaryWriter()
         self.m = params['m']
@@ -152,10 +152,10 @@ class ClassifierTrainer:
         val_niter = 0
         model_checkpoints_folder = os.path.join(self.writer.log_dir, 'checkpoints')
 
-        self.target_network.to(self.device)
+        self.online_network.to(self.device)
         self.classifier.to(self.device)
 
-        self.target_network.eval()
+        self.online_network.eval()
         for epoch_counter in range(self.max_epochs):
 
             self.classifier.train()
@@ -188,7 +188,8 @@ class ClassifierTrainer:
         images = images.to(self.device)
         labels = labels.to(self.device)
         with torch.no_grad():
-            images_embedding = self.target_network(images)
+            # images_embedding = self.target_network(images)
+            images_embedding = self.online_network.get_representation(images)
                 
         outputs = self.classifier(images_embedding)
 

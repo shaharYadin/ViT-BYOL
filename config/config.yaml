@@ -13,18 +13,18 @@ data_transforms:
   input_shape: (96,96,3)
 
 trainer: #byol trainer
-  batch_size: 128
+  batch_size: 256
   m: 0.996 # momentum update
   checkpoint_interval: 5000
   max_epochs: 300
-  num_workers: 4
+  num_workers: 6
 
 classifier_trainer:
   batch_size: 128
   m: 0.996 # momentum update
   checkpoint_interval: 5000
   max_epochs: 40
-  num_workers: 4
+  num_workers: 6
 
 mode: 'train_byol' #optuna/train_byol/train_classifier
 

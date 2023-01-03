@@ -11,6 +11,7 @@ from models.resnet_base_network import ByolNet
 from trainer import BYOLTrainer, ClassifierTrainer
 from our_transforms import AddGaussianNoise
 from CosineWarmUp import CosineWarmupScheduler
+from classifier_inference import classifier_inference,load_weigths
 from optuna_exp import objective
 import optuna
 from define_model import define_model
@@ -22,7 +23,7 @@ torch.manual_seed(0)
 def main():
 
     config = yaml.load(open("./config/config.yaml", "r"), Loader=yaml.FullLoader)
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     
     tf = transforms.Compose([transforms.ToTensor()])
     
@@ -55,15 +56,26 @@ def main():
 
     elif config['mode'] == 'train_byol':
         trainer = define_model()
-        train_dataset = datasets.CIFAR10("./data", train=True, download=True, transform=MultiViewDataInjector([tf, tf]))
+        train_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=True, download=True, transform=MultiViewDataInjector([tf, tf]))
         trainer.train(train_dataset)
 
     elif config['mode'] == 'train_classifier':
-        train_dataset = datasets.CIFAR10("./data", train=True, download=True, transform=tf)
-        val_dataset = datasets.CIFAR10("./data", train=False, download=True, transform=tf)
+        dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=True, download=True, transform=tf)
+
+        val_size = int(len(dataset)*0.2)
+        train_size = len(dataset) - val_size
+        train_data, valid_data = torch.utils.data.random_split(dataset, [train_size, val_size])
         
         classifier_trainer = define_model(train_byol=False)
-        classifier_trainer.train(train_dataset=train_dataset,val_dataset=val_dataset)
+        classifier_trainer.train(train_dataset=train_data,val_dataset=valid_data)
+
+    elif config['mode'] == 'test_classifier':
+        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=tf)
+        byol_model, classifier_model = load_weigths(config=config)
+        classifier_inference(test_data=test_dataset,byol=byol_model,classifier=classifier_model)
+        classifier_inference(test_data=test_dataset,byol=byol_model,classifier=classifier_model,noisy_inference=True)
+        
+
     else:
         raise NotImplementedError()
 

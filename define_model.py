@@ -73,7 +73,7 @@ def define_model(train_byol=True):
                 raise FileNotFoundError
 
         num_classes = 10
-        in_channels = predictor.net[-1].out_features
+        in_channels = online_network.byolnet.heads.head.out_features
         classifier_model = classifier(in_channels=in_channels,num_classes=num_classes)
         classifier_optimizer = torch.optim.Adam(classifier_model.parameters(),
                                 **config['optimizer']['classifier_params'])

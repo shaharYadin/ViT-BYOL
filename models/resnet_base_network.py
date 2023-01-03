@@ -51,9 +51,18 @@ class ByolNet(torch.nn.Module):
         return x
 
 
-        # h = self.patch_embedding(x)
-        # h = h.flatten(2)
-        # h = h.transpose(-1,-2)
-        # h = self.encoder(h)
-        # h = h.view(h.shape[0], h.shape[1])
-        # return self.projection(h)
+    def get_representation(self, x):
+        
+        x = self.byolnet._process_input(x)
+        n = x.shape[0]
+
+        # Expand the class token to the full batch
+        batch_class_token = self.byolnet.class_token.expand(n, -1, -1)
+        x = torch.cat([batch_class_token, x], dim=1)
+
+        x = self.byolnet.encoder(x)
+
+        # Classifier "token" as used by standard language architectures
+        x = x[:, 0]
+
+        return x
