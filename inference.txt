@@ -1,0 +1,4 @@
+BYOL was created at 1672911647.3946202, Classifier was created at 1672914550.8022182:
+ Test set Accuracy: 0.374
+BYOL was created at 1672911647.3946202, Classifier was created at 1672914550.8022182:
+ Noisy test set Accuracy: 0.3744

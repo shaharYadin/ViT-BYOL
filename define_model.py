@@ -25,20 +25,6 @@ def define_model(train_byol=True):
     # online network
     online_network = ByolNet(**config['network']).to(device)
 
-    # # load pre-trained model if defined
-    # if pretrained_folder:
-    #     try:
-    #         checkpoints_folder = os.path.join('./runs', pretrained_folder, 'checkpoints')
-
-    #         # load pre-trained parameters
-    #         load_params = torch.load(os.path.join(os.path.join(checkpoints_folder, 'model.pth')),
-    #                                  map_location=torch.device(torch.device(device)))
-
-    #         online_network.load_state_dict(load_params['online_network_state_dict'])
-
-    #     except FileNotFoundError:
-    #         print("Pre-trained weights not found. Training from scratch.")
-
     # predictor network
     predictor = MLPHead(in_channels=online_network.projection.net[-1].out_features,
                         **config['network']['projection_head']).to(device)
@@ -46,7 +32,7 @@ def define_model(train_byol=True):
     # target encoder
     target_network = ByolNet(**config['network']).to(device)
 
-    optimizer = torch.optim.RAdam(list(online_network.parameters()) + list(predictor.parameters()),
+    optimizer = torch.optim.Adam(list(online_network.parameters()) + list(predictor.parameters()),
                                 **config['optimizer']['params'])
     if train_byol:
         trainer = BYOLTrainer(online_network=online_network,
@@ -54,6 +40,7 @@ def define_model(train_byol=True):
                             optimizer=optimizer,
                             predictor=predictor,
                             device=device,
+                            pretrained=config['network']['pretrained'],
                             **config['trainer'])
         
         return trainer
@@ -73,7 +60,7 @@ def define_model(train_byol=True):
                 raise FileNotFoundError
 
         num_classes = 10
-        in_channels = online_network.byolnet.heads.head.out_features
+        in_channels = online_network.byolnet.heads.head.in_features
         classifier_model = classifier(in_channels=in_channels,num_classes=num_classes)
         classifier_optimizer = torch.optim.Adam(classifier_model.parameters(),
                                 **config['optimizer']['classifier_params'])

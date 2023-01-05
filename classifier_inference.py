@@ -7,27 +7,32 @@ import os
 from models.resnet_base_network import ByolNet
 from models.classifier import classifier
 
+import time
+
 def load_weigths(config):
     checkpoint_folder = config['network']['checkpoints']
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     byol_model = ByolNet(**config['network']).to(device)
     
-    load_params = torch.load(os.path.join(os.path.join(checkpoint_folder, 'byol_model.pth')),
+    load_params = torch.load(os.path.join(checkpoint_folder, 'byol_model.pth'),
                                             map_location=device)
     byol_model.load_state_dict(load_params['online_network_state_dict'])
 
     num_classes = 10
-    in_channels = byol_model.byolnet.heads.head.out_features
+    in_channels = byol_model.byolnet.heads.head.in_features
     classifier_model = classifier(in_channels=in_channels,num_classes=num_classes).to(device)
     
-    load_params = torch.load(os.path.join(os.path.join(checkpoint_folder, 'classifier_model.pth')),
+    load_params = torch.load(os.path.join(checkpoint_folder, 'classifier_model.pth'),
                                             map_location=device)
     classifier_model.load_state_dict(load_params['classifier_state_dict'])
 
-    return byol_model, classifier_model
+    time_byol = os.path.getmtime(os.path.join(checkpoint_folder, 'byol_model.pth'))
+    time_classifier = os.path.getmtime(os.path.join(checkpoint_folder, 'classifier_model.pth'))
+
+    return byol_model, classifier_model, time_byol, time_classifier
                 
 
-def classifier_inference(test_data, byol, classifier, sigma=0.1 ,batch_size=256 ,noisy_inference=False):
+def classifier_inference(test_data, byol, classifier, byol_time, classifier_time ,sigma=0.1 ,batch_size=256 ,noisy_inference=False):
     
 
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -55,10 +60,17 @@ def classifier_inference(test_data, byol, classifier, sigma=0.1 ,batch_size=256 
             total_correct += (predicted == labels).sum().item()
 
     accuracy = total_correct / total_images
+
+    byol_time = time.ctime(byol_time)
+    classifier_time = time.ctime(classifier_time)
     if noisy_inference:
         print(f'The classifier accuracy on the noisy test set is: {accuracy}')
+        with open('inference.txt', 'a') as file1:
+            file1.write(f'BYOL was created at {byol_time}, Classifier was created at {classifier_time}:\n Noisy test set Accuracy: {accuracy}\n')
     else:
-        print(f'The classifier accutacy on the test set is {accuracy}')
+        print(f'The classifier accuracy on the test set is {accuracy}')
+        with open('inference.txt', 'a') as file1:
+            file1.write(f'BYOL was created at {byol_time}, Classifier was created at {classifier_time}:\n Test set Accuracy: {accuracy}\n')
             
 
             
