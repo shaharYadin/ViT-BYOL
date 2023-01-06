@@ -6,6 +6,7 @@ import torchvision
 import numpy as np
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from tqdm import tqdm
 
 from utils import _create_model_training_folder
 from CosineWarmUp import CosineWarmupScheduler
@@ -72,7 +73,7 @@ class BYOLTrainer:
         best_loss = np.inf
         for epoch_counter in range(self.max_epochs):
             epoch_loss = 0
-            for (batch_view_1, batch_view_2), _ in train_loader:
+            for (batch_view_1, batch_view_2), _ in tqdm(train_loader, leave=False):
 
                 batch_view_1 = batch_view_1.to(self.device)
                 batch_view_2 = batch_view_2.to(self.device)
@@ -181,49 +182,62 @@ class ClassifierTrainer:
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size,
                                   num_workers=self.num_workers, drop_last=False, shuffle=True)
 
-        niter = 0
-        val_niter = 0
+        freq_for_val = 1
+
         model_checkpoints_folder = os.path.join(self.writer.log_dir, 'checkpoints')
 
         self.online_network.to(self.device)
         self.classifier.to(self.device)
 
-        best_loss = np.inf
+        best_accuracy = 0
 
         self.online_network.eval()
         for epoch_counter in range(self.max_epochs):
 
+            epoch_loss = 0
             self.classifier.train()
-            for images, labels in train_loader:
+            for images, labels in tqdm(train_loader, leave=False):
                 
                 loss = self.update(images, labels)
-                self.writer.add_scalar('loss', loss, global_step=niter)
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
-                niter += 1
+                epoch_loss += loss.item()
+
+            epoch_loss = epoch_loss / len(train_loader)
+            self.writer.add_scalar('loss', epoch_loss, global_step=epoch_counter)
+
             
-            if epoch_counter % 5 == 0 or epoch_counter == self.max_epochs - 1:
+            if epoch_counter % freq_for_val == 0 or epoch_counter == self.max_epochs - 1:
                 val_loss = 0
                 self.classifier.eval()
+                total_images = 0
+                total_correct = 0
                 with torch.no_grad():
                     for images, labels in val_loader:
-                        val_loss += self.update(images, labels).item()
-                        # val_niter += 1
-                    val_loss = val_loss / len(val_loader)
+                        batch_val_loss, outputs = self.update(images, labels, val=True)
+                        val_loss += batch_val_loss.item()
+                        _, predicted = torch.max(outputs.data, 1)
+                        predicted = predicted.cpu()
+                        total_images += labels.size(0)
+                        total_correct += (predicted == labels).sum().item()
+
+                val_accuracy = total_correct / total_images
+                val_loss = val_loss / len(val_loader)
                 self.writer.add_scalar('val_loss', val_loss, global_step=epoch_counter)
-                if val_loss < best_loss:
+                self.writer.add_scalar('val_accuracy', val_accuracy, global_step=epoch_counter)
+                if val_accuracy > best_accuracy:
                     self.save_model(os.path.join(model_checkpoints_folder, 'classifier_model.pth'))
-                    best_loss = val_loss
+                    best_accuracy = val_accuracy
         
-            print(f'End of epoch {epoch_counter}, val_loss={val_loss:.5f}')
+            print(f'End of epoch {epoch_counter}, val_loss={val_loss:.5f}, val_accuracy={val_accuracy:.5f}')
 
         # save checkpoints
         # self.save_model(os.path.join(model_checkpoints_folder, 'classifier_model.pth'))
 
-    def update(self, images, labels):
+    def update(self, images, labels, val=False):
         
         images = images.to(self.device)
         labels = labels.to(self.device)
@@ -235,7 +249,10 @@ class ClassifierTrainer:
 
         criterion = nn.CrossEntropyLoss()
         loss = criterion(outputs, labels)
-        return loss
+        if val:
+            return loss, outputs
+        else:
+            return loss
 
     def save_model(self, PATH):
         torch.save({

@@ -2,3 +2,7 @@ BYOL was created at 1672911647.3946202, Classifier was created at 1672914550.802
  Test set Accuracy: 0.374
 BYOL was created at 1672911647.3946202, Classifier was created at 1672914550.8022182:
  Noisy test set Accuracy: 0.3744
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Fri Jan  6 17:36:19 2023:
+ Test set Accuracy: 0.8595
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Fri Jan  6 17:36:19 2023:
+ Noisy test set Accuracy: 0.8565

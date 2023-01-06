@@ -24,7 +24,7 @@ def main():
 
     config = yaml.load(open("./config/config.yaml", "r"), Loader=yaml.FullLoader)
     # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
+    print(f"Running in mode {config['mode']}")
     if config['network']['pretrained']:
         tf = transforms.Compose([transforms.Resize(size=(224, 224)),
                                  transforms.ToTensor(),

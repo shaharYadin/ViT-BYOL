@@ -6,6 +6,7 @@ import torch
 import os
 from models.resnet_base_network import ByolNet
 from models.classifier import classifier
+from tqdm import tqdm
 
 import time
 
@@ -47,7 +48,7 @@ def classifier_inference(test_data, byol, classifier, byol_time, classifier_time
     total_images = 0.0
     total_correct = 0.0
     with torch.no_grad():
-        for imgs, labels in test_loader:
+        for imgs, labels in tqdm(test_loader):
             imgs = imgs.to(device)
             labels = labels.to(device)
             if noisy_inference:
