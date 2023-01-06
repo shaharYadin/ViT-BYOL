@@ -13,7 +13,7 @@ data_transforms:
   input_shape: (96,96,3)
 
 trainer: #byol trainer
-  batch_size: 256
+  batch_size: 128
   m: 0.996 # momentum update
   checkpoint_interval: 5000
   max_epochs: 50
@@ -26,7 +26,7 @@ classifier_trainer:
   max_epochs: 40
   num_workers: 6
 
-mode: 'train_byol' #optuna/train_byol/train_classifier/test_classifier
+mode: 'train_classifier' #optuna/train_byol/train_classifier/test_classifier
 
 optimizer:
   params: #byol_params 

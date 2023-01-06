@@ -47,11 +47,16 @@ class BYOLTrainer:
             param_k.data.copy_(param_q.data)  # initialize
             param_k.requires_grad = False  # not update by gradient
 
-    def train(self, train_dataset):
+    def train(self, train_dataset, val_dataset):
 
         train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
                                   num_workers=self.num_workers, drop_last=True, shuffle=True)
 
+        val_loader = DataLoader(val_dataset, batch_size=self.batch_size,
+                                  num_workers=self.num_workers, drop_last=True, shuffle=True)
+
+        
+        freq_for_val = 1
         # Warm up schedular since we use ViT
         if self.pretrained:
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', patience=5, verbose=True)
@@ -96,21 +101,36 @@ class BYOLTrainer:
                     scheduler.step()
                     self.writer.add_scalar('lr', scheduler.get_last_lr(), global_step=niter)
 
-            if epoch_loss < best_loss:
-                self.save_model(os.path.join(model_checkpoints_folder, 'byol_model.pth'))
-                best_loss = epoch_loss
-                epoch_best_loss = epoch_counter
+            if epoch_counter % freq_for_val == 0 or epoch_counter == self.max_epochs - 1:
+                val_loss = 0
+                self.online_network.eval()
+                with torch.no_grad():
+                    for images, labels in val_loader:
+                        val_loss += self.update(images, labels).item()
+                        # val_niter += 1
+                    val_loss = val_loss / len(val_loader)
+                self.writer.add_scalar('val_loss', val_loss, global_step=epoch_counter)
+                if val_loss < best_loss:
+                    self.save_model(os.path.join(model_checkpoints_folder, 'byol_model.pth'))
+                    best_loss = val_loss
+                    epoch_best_loss = epoch_counter
+
+            # if epoch_loss < best_loss:
+            #     self.save_model(os.path.join(model_checkpoints_folder, 'byol_model.pth'))
+            #     best_loss = epoch_loss
+            #     epoch_best_loss = epoch_counter
+                
 
             if self.pretrained:
-                scheduler.step(epoch_loss / len(train_loader))
-                self.writer.add_scalar('lr', scheduler.get_last_lr(), global_step=epoch_counter)
+                scheduler.step(val_loss)
+                # self.writer.add_scalar('lr', scheduler.get_last_lr(), global_step=epoch_counter)
             
             self.writer.add_scalar('loss', epoch_loss / len(train_loader), global_step=epoch_counter)
-            print(f'End of epoch {epoch_counter}, Epoch Loss is: {(epoch_loss / len(train_loader)):.5f}, Best Loss is: {best_loss}, Best Loss Epoch is: {epoch_best_loss}')
+            print(f'End of epoch {epoch_counter}, Train Loss is: {(epoch_loss / len(train_loader)):.5f}, Val Loss is: {val_loss}, Best Val Loss is: {best_loss}, Best Loss Epoch is: {epoch_best_loss}')
             
 
         # save checkpoints
-        self.save_model(os.path.join(model_checkpoints_folder, 'byol_model_final.pth'))
+        # self.save_model(os.path.join(model_checkpoints_folder, 'byol_model_final.pth'))
 
     def update(self, batch_view_1, batch_view_2):
         # compute query feature

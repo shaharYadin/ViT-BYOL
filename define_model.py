@@ -11,10 +11,6 @@ from models.resnet_base_network import ByolNet
 from models.classifier import classifier
 from trainer import BYOLTrainer,ClassifierTrainer
 
-print(torch.__version__)
-torch.manual_seed(0)
-
-
 def define_model(train_byol=True):
     config = yaml.load(open("./config/config.yaml", "r"), Loader=yaml.FullLoader)
 
