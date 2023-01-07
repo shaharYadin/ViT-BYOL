@@ -1,12 +1,14 @@
 import os
 import time
 
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 from torch.utils.data.dataloader import DataLoader
 from tqdm import tqdm
+import numpy as np
 
 from models.classifier import classifier
 from models.resnet_base_network import ByolNet
@@ -77,5 +79,54 @@ def classifier_inference(test_data, byol, classifier, byol_time, classifier_time
             file1.write(f'BYOL was created at {byol_time}, Classifier was created at {classifier_time}:\n Test set Accuracy: {accuracy}\n')
             
 
-            
-            
+def save_imgs(test_data, byol, classifier ,batch_size=8):            
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    test_loader = torch.utils.data.DataLoader(
+        test_data,
+        batch_size=batch_size,
+    )
+
+    byol = byol.to(device)
+    classifier = classifier.to(device)
+    
+    (noisy_imgs, imgs), labels = next(iter(test_loader))
+    with torch.no_grad():
+        noisy_imgs = noisy_imgs.to(device) #+ torch.randn(noisy_imgs.shape).to(device)
+        imgs= imgs.to(device)
+        labels = labels.to(device)
+        
+        imgs_representation = byol.get_representation(imgs)
+        imgs = F.normalize(imgs, dim=1)
+        outputs = classifier(imgs_representation)
+        _, predicted = torch.max(outputs.data, 1)
+
+        noisy_imgs_representation = byol.get_representation(noisy_imgs)
+        noisy_imgs = F.normalize(noisy_imgs, dim=1)
+        noisy_outputs = classifier(noisy_imgs_representation)
+        _, noisy_predicted = torch.max(noisy_outputs.data, 1)
+    
+    noisy_imgs = (noisy_imgs / 2  + 0.5).clamp(0.0, 1.0)
+    imgs = (imgs / 2 + 0.5).clamp(0.0, 1.0)
+
+    labels_to_classes = {0: "airplane",
+                        1: "automobile",
+                        2:"bird",
+                        3:"cat",
+                        4:"deer",
+                        5:"dog",
+                        6:"frog",
+                        7:"horse",
+                        8:"ship",
+                        9:"truck"
+                        }
+    fig = plt.figure(figsize=(20,20))
+    for i in range(batch_size):
+        ax = plt.subplot(4,4, 2*i+1)
+        ax.imshow(np.array(imgs[i].cpu()).transpose(1,2,0))
+        ax.set_title(f'Predicted Label: {labels_to_classes[predicted[i].item()]}')
+        ax2 = plt.subplot(4,4, 2*i+2)
+        ax2.imshow(np.array(noisy_imgs[i].cpu()).transpose(1,2,0))
+        ax2.set_title(f'Predicted Label: {labels_to_classes[noisy_predicted[i].item()]}')
+    
+    fig.savefig('images_with_predictions.png')
+

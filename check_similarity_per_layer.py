@@ -40,8 +40,8 @@ def check_similarity_per_layer(byol_model: ByolNet, test_dataset, batch_size=128
     layer_cosine_loss = {str(layer).partition('(')[0]+f"_{i}": 0 for i,layer in enumerate(modulelist)}
     # layer_l2_loss = {str(layer).partition('(')[0]+f"_{i}": 0 for i,layer in enumerate(modulelist)}
     for (batch_view_1, batch_view_2), _ in tqdm(test_loader, leave=False):
-        noise = 0.1 * torch.randn(batch_view_1.shape).to(device)
-        noisy_output = batch_view_1.to(device) + noise
+        # noise = 0.1 * torch.randn(batch_view_1.shape).to(device)
+        noisy_output = batch_view_1.to(device) #+ noise
         output = batch_view_2.to(device)
         with torch.no_grad():
             for i,layer in enumerate(modulelist):

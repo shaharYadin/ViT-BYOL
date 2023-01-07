@@ -27,7 +27,7 @@ classifier_trainer:
   max_epochs: 200
   num_workers: 6
 
-mode: 'check_similarity_per_layer' #optuna/train_byol/train_classifier/test_classifier/check_similarity_per_layer
+mode: 'test_classifier' #optuna/train_byol/train_classifier/test_classifier/check_similarity_per_layer
 
 optimizer:
   params: #byol_params 

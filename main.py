@@ -7,7 +7,7 @@ import yaml
 from torchvision import datasets
 
 from check_similarity_per_layer import check_similarity_per_layer
-from classifier_inference import classifier_inference, load_weigths
+from classifier_inference import classifier_inference, load_weigths, save_imgs
 from CosineWarmUp import CosineWarmupScheduler
 from data.multi_view_data_injector import MultiViewDataInjector
 from data.transforms import get_simclr_data_transforms
@@ -98,12 +98,14 @@ def main():
         test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=tf)
         noisy_test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=noisy_tf)
         byol_model, classifier_model, byol_time, classifier_time = load_weigths(config=config)
-        classifier_inference(test_data=test_dataset,byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time)
-        classifier_inference(test_data=noisy_test_dataset,byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time , noisy_inference=True)
+        # classifier_inference(test_data=test_dataset,byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time)
+        # classifier_inference(test_data=noisy_test_dataset,byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time , noisy_inference=True)
+        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([noisy_tf, tf]))
+        save_imgs(test_dataset, byol_model, classifier_model)
     
     elif config['mode'] == 'check_similarity_per_layer':
         byol_model, _, _, _ = load_weigths(config=config)
-        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([tf, tf]))
+        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([noisy_tf, tf])) #TODO: change it to noisy_tf
         
         check_similarity_per_layer(byol_model, test_dataset)
         
