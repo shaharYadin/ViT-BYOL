@@ -18,15 +18,16 @@ trainer: #byol trainer
   checkpoint_interval: 5000
   max_epochs: 50
   num_workers: 6
+  sigma: 0.1
 
 classifier_trainer:
   batch_size: 1024
   m: 0.996 # momentum update
   checkpoint_interval: 5000
-  max_epochs: 40
+  max_epochs: 200
   num_workers: 6
 
-mode: 'train_classifier' #optuna/train_byol/train_classifier/test_classifier
+mode: 'check_similarity_per_layer' #optuna/train_byol/train_classifier/test_classifier/check_similarity_per_layer
 
 optimizer:
   params: #byol_params 

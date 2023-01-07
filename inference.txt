@@ -6,3 +6,19 @@ BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Fri Jan 
  Test set Accuracy: 0.8595
 BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Fri Jan  6 17:36:19 2023:
  Noisy test set Accuracy: 0.8565
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Test set Accuracy: 0.8881
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Noisy test set Accuracy: 0.8836
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Noisy test set Accuracy for sigma=0.2 (BYOL trained on sigma=0.1): 0.8743
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Noisy test set Accuracy for sigma=0.4 (BYOL trained on sigma=0.1): 0.8301
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Noisy test set Accuracy for sigma=0.6 (BYOL trained on sigma=0.1): 0.7543
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Noisy test set Accuracy for sigma=0.8 (BYOL trained on sigma=0.1): 0.6457
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Noisy test set Accuracy for sigma=1 (BYOL trained on sigma=0.1): 0.5307
+BYOL was created at Fri Jan  6 16:45:47 2023, Classifier was created at Sat Jan  7 10:45:44 2023:
+ Noisy test set Accuracy: 0.6769

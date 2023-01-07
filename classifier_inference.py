@@ -1,14 +1,16 @@
-import torch.nn.functional as F
+import os
+import time
+
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchvision
 from torch.utils.data.dataloader import DataLoader
-import torch
-import os
-from models.resnet_base_network import ByolNet
-from models.classifier import classifier
 from tqdm import tqdm
 
-import time
+from models.classifier import classifier
+from models.resnet_base_network import ByolNet
+
 
 def load_weigths(config):
     checkpoint_folder = config['network']['checkpoints']
@@ -51,10 +53,11 @@ def classifier_inference(test_data, byol, classifier, byol_time, classifier_time
         for imgs, labels in tqdm(test_loader):
             imgs = imgs.to(device)
             labels = labels.to(device)
-            if noisy_inference:
-                noise = sigma * torch.randn(imgs.shape).to(device)
-                imgs += noise
+            # if noisy_inference:
+            #     noise = sigma * torch.randn(imgs.shape).to(device)
+            #     imgs += noise
             imgs = byol.get_representation(imgs)
+            imgs = F.normalize(imgs, dim=1)
             outputs = classifier(imgs)
             _, predicted = torch.max(outputs.data, 1)
             total_images += labels.size(0)

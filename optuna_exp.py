@@ -13,9 +13,10 @@ from CosineWarmUp import CosineWarmupScheduler
 from trainer import BYOLTrainer
 import torchvision.transforms as transforms
 from define_model import define_model
+from our_transforms import AddGaussianNoise
 
-def get_cifar10(batch_size):
-    dataset= torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=True, download=True, transform=MultiViewDataInjector([transforms.ToTensor(), transforms.ToTensor()]))
+def get_cifar10(batch_size, tf1, tf2):
+    dataset= torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=True, download=True, transform=MultiViewDataInjector([tf1, tf2]))
     
     # valid_loader = torch.utils.data.DataLoader(
     #     torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=False, transform=MultiViewDataInjector([transforms.ToTensor(), transforms.ToTensor()])),
@@ -56,7 +57,17 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
     # optimizer = trial.suggest_categorical("optimizer", [optim.Adam, optim.RMSprop, optim.SGD])
 
     # Get the CIFAR10 dataset.
-    train_loader, valid_loader = get_cifar10(batch_size=trainer.batch_size)
+
+    sigma = 0.1
+    tf = transforms.Compose([transforms.ToTensor(),
+                                 transforms.Resize(size=(224, 224)),
+                                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
+
+    noisy_tf = transforms.Compose([transforms.ToTensor(),
+                                   AddGaussianNoise(std=sigma),
+                                   transforms.Resize(size=(224, 224)),
+                                   transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
+    train_loader, valid_loader = get_cifar10(batch_size=trainer.batch_size, tf1=noisy_tf, tf2=tf)
 
 
     # Training of the model.
@@ -72,9 +83,9 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
             batch_view_1 = batch_view_1.to(trainer.device)
             batch_view_2 = batch_view_2.to(trainer.device)
             
-            sigma = 0.1
-            noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
-            batch_view_1 += noise
+            # sigma = 0.1
+            # noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
+            # batch_view_1 += noise
 
             loss = trainer.update(batch_view_1, batch_view_2)
 
@@ -99,10 +110,10 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
                 batch_view_1 = batch_view_1.to(trainer.device)
                 batch_view_2 = batch_view_2.to(trainer.device)
                 
-                sigma = 0.1
-                noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
+                # sigma = 0.1
+                # noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
 
-                batch_view_1 += noise
+                # batch_view_1 += noise
                 val_loss += (trainer.update(batch_view_1, batch_view_2)).item()
                 val_niter += 1
         val_loss = val_loss / val_niter

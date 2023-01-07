@@ -1,15 +1,16 @@
 import os
-import torch
-import torch.nn.functional as F
-import torch.nn as nn
-import torchvision
+
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from utils import _create_model_training_folder
 from CosineWarmUp import CosineWarmupScheduler
+from utils import _create_model_training_folder
 
 
 class BYOLTrainer:
@@ -26,6 +27,7 @@ class BYOLTrainer:
         self.batch_size = params['batch_size']
         self.num_workers = params['num_workers']
         self.checkpoint_interval = params['checkpoint_interval']
+        self.sigma = params['sigma']
         _create_model_training_folder(self.writer, files_to_same=["./config/config.yaml", "main.py", 'trainer.py'])
 
     @torch.no_grad()
@@ -58,9 +60,10 @@ class BYOLTrainer:
 
         
         freq_for_val = 1
+
         # Warm up schedular since we use ViT
         if self.pretrained:
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', patience=5, verbose=True)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', patience=2, verbose=True)
         else:
             warmup = 3 * len(train_loader)
             max_iter = self.max_epochs * len(train_loader)
@@ -78,9 +81,9 @@ class BYOLTrainer:
                 batch_view_1 = batch_view_1.to(self.device)
                 batch_view_2 = batch_view_2.to(self.device)
                 
-                sigma = 0.1
-                noise = (sigma * torch.randn(batch_view_1.shape)).to(self.device)
-                batch_view_1 += noise
+                # sigma =  self.sigma #0.1
+                # noise = (sigma * torch.randn(batch_view_1.shape)).to(self.device)
+                # batch_view_1 += noise
 
                 if niter == 0:
                     grid = torchvision.utils.make_grid(batch_view_1[:32])
@@ -106,9 +109,11 @@ class BYOLTrainer:
                 val_loss = 0
                 self.online_network.eval()
                 with torch.no_grad():
-                    for images, labels in val_loader:
-                        val_loss += self.update(images, labels).item()
-                        # val_niter += 1
+                    for (batch_view_1, batch_view_2), _ in val_loader:
+                        batch_view_1 = batch_view_1.to(self.device)
+                        batch_view_2 = batch_view_2.to(self.device)
+                        val_loss += self.update(batch_view_1, batch_view_2).item()
+                        
                     val_loss = val_loss / len(val_loader)
                 self.writer.add_scalar('val_loss', val_loss, global_step=epoch_counter)
                 if val_loss < best_loss:
@@ -182,6 +187,8 @@ class ClassifierTrainer:
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size,
                                   num_workers=self.num_workers, drop_last=False, shuffle=True)
 
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='max', patience=2, verbose=True)
+
         freq_for_val = 1
 
         model_checkpoints_folder = os.path.join(self.writer.log_dir, 'checkpoints')
@@ -231,6 +238,8 @@ class ClassifierTrainer:
                 if val_accuracy > best_accuracy:
                     self.save_model(os.path.join(model_checkpoints_folder, 'classifier_model.pth'))
                     best_accuracy = val_accuracy
+            
+                scheduler.step(val_accuracy)
         
             print(f'End of epoch {epoch_counter}, val_loss={val_loss:.5f}, val_accuracy={val_accuracy:.5f}')
 
@@ -244,6 +253,7 @@ class ClassifierTrainer:
         with torch.no_grad():
             # images_embedding = self.target_network(images)
             images_embedding = self.online_network.get_representation(images)
+            images_embedding = F.normalize(images_embedding, dim=1)
                 
         outputs = self.classifier(images_embedding)
 
