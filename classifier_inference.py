@@ -55,9 +55,9 @@ def classifier_inference(test_data, byol, classifier, byol_time, classifier_time
         for imgs, labels in tqdm(test_loader):
             imgs = imgs.to(device)
             labels = labels.to(device)
-            # if noisy_inference:
-            #     noise = sigma * torch.randn(imgs.shape).to(device)
-            #     imgs += noise
+            if noisy_inference:
+                noise = sigma * torch.randn(imgs.shape).to(device)
+                imgs += noise
             imgs = byol.get_representation(imgs)
             imgs = F.normalize(imgs, dim=1)
             outputs = classifier(imgs)
@@ -79,7 +79,7 @@ def classifier_inference(test_data, byol, classifier, byol_time, classifier_time
             file1.write(f'BYOL was created at {byol_time}, Classifier was created at {classifier_time}:\n Test set Accuracy: {accuracy}\n')
             
 
-def save_imgs(test_data, byol, classifier ,batch_size=8):            
+def save_imgs(test_data, byol, classifier ,batch_size=8, sigma=0.1):            
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     test_loader = torch.utils.data.DataLoader(
         test_data,
@@ -91,7 +91,7 @@ def save_imgs(test_data, byol, classifier ,batch_size=8):
     
     (noisy_imgs, imgs), labels = next(iter(test_loader))
     with torch.no_grad():
-        noisy_imgs = noisy_imgs.to(device) #+ torch.randn(noisy_imgs.shape).to(device)
+        noisy_imgs = noisy_imgs.to(device) + sigma * torch.randn(noisy_imgs.shape).to(device)
         imgs= imgs.to(device)
         labels = labels.to(device)
         

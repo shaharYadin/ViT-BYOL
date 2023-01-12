@@ -3,6 +3,7 @@ import os
 import optuna
 import torch
 import torchvision.transforms as transforms
+import wandb
 import yaml
 from torchvision import datasets
 
@@ -21,7 +22,7 @@ from trainer import BYOLTrainer, ClassifierTrainer
 print(torch.__version__)
 # torch.manual_seed(0)
 
-
+wandb.init(project="vit_byol", sync_tensorboard=True, entity='vit_byol')
 
 def main():
 
@@ -30,21 +31,21 @@ def main():
     # device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     print(f"Running in mode {config['mode']}")
     if config['network']['pretrained']:
-        tf = transforms.Compose([transforms.ToTensor(),
-                                 transforms.Resize(size=(224, 224)),
+        tf = transforms.Compose([transforms.Resize(size=(224, 224)),
+                                 transforms.ToTensor(),
                                  transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
 
-        noisy_tf = transforms.Compose([transforms.ToTensor(),
-                                 AddGaussianNoise(std=sigma),
-                                 transforms.Resize(size=(224, 224)),
-                                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
+        noisy_tf = transforms.Compose([transforms.Resize(size=(224, 224)),
+                                 transforms.ToTensor(),
+                                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+                                 AddGaussianNoise(std=sigma)])
     else:
         tf = transforms.Compose([transforms.ToTensor(),
                                  transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
         
         noisy_tf = transforms.Compose([transforms.ToTensor(),
-                                       AddGaussianNoise(std=sigma),
-                                       transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
+                                       transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+                                       AddGaussianNoise(std=sigma)])
 
 
     if config['mode'] == 'optuna':
@@ -76,7 +77,7 @@ def main():
     elif config['mode'] == 'train_byol':
         
         trainer = define_model()
-        dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=True, download=True, transform=MultiViewDataInjector([noisy_tf, tf]))
+        dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=True, download=True, transform=MultiViewDataInjector([tf, tf]))
         val_size = int(len(dataset)*0.2)
         train_size = len(dataset) - val_size
         train_data, valid_data = torch.utils.data.random_split(dataset, [train_size, val_size])
@@ -96,18 +97,19 @@ def main():
     elif config['mode'] == 'test_classifier':
         
         test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=tf)
-        noisy_test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=noisy_tf)
+        # noisy_test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=tf)
         byol_model, classifier_model, byol_time, classifier_time = load_weigths(config=config)
-        # classifier_inference(test_data=test_dataset,byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time)
-        # classifier_inference(test_data=noisy_test_dataset,byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time , noisy_inference=True)
-        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([noisy_tf, tf]))
-        save_imgs(test_dataset, byol_model, classifier_model)
+        classifier_inference(test_data=test_dataset, byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time)
+        classifier_inference(test_data=test_dataset, byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time , noisy_inference=True, sigma=sigma)
+
+        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([tf, tf]))
+        save_imgs(test_dataset, byol_model, classifier_model, sigma=sigma)
     
     elif config['mode'] == 'check_similarity_per_layer':
         byol_model, _, _, _ = load_weigths(config=config)
-        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([noisy_tf, tf])) #TODO: change it to noisy_tf
+        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([tf, tf])) 
         
-        check_similarity_per_layer(byol_model, test_dataset)
+        check_similarity_per_layer(byol_model, test_dataset, sigma=sigma)
         
     else:
         raise NotImplementedError()

@@ -1,8 +1,9 @@
 network:
   name: ViT
-  pretrained: True
+  pretrained: False
   # Specify a folder containing a pre-trained model to fine-tune. If training from scratch, pass None.
   checkpoints: 'checkpoints'
+  use_amp: True
 
   projection_head:
     mlp_hidden_size: 512
@@ -13,10 +14,10 @@ data_transforms:
   input_shape: (96,96,3)
 
 trainer: #byol trainer
-  batch_size: 128
+  batch_size: 2048
   m: 0.996 # momentum update
   checkpoint_interval: 5000
-  max_epochs: 50
+  max_epochs: 500
   num_workers: 6
   sigma: 0.1
 
@@ -27,11 +28,11 @@ classifier_trainer:
   max_epochs: 200
   num_workers: 6
 
-mode: 'test_classifier' #optuna/train_byol/train_classifier/test_classifier/check_similarity_per_layer
+mode: 'train_byol' #optuna/train_byol/train_classifier/test_classifier/check_similarity_per_layer
 
 optimizer:
   params: #byol_params 
-    lr: 0.00001
+    lr: 0.0001
     # momentum: 0.9
     weight_decay: 0.0 #0.0004
   classifier_params:

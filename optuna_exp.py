@@ -58,23 +58,26 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
 
     # Get the CIFAR10 dataset.
 
-    sigma = 0.1
+    
     tf = transforms.Compose([transforms.ToTensor(),
                                  transforms.Resize(size=(224, 224)),
                                  transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
 
-    noisy_tf = transforms.Compose([transforms.ToTensor(),
-                                   AddGaussianNoise(std=sigma),
-                                   transforms.Resize(size=(224, 224)),
-                                   transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
-    train_loader, valid_loader = get_cifar10(batch_size=trainer.batch_size, tf1=noisy_tf, tf2=tf)
+    noisy_tf = transforms.Compose([transforms.Resize(size=(224, 224)),
+                                 transforms.ToTensor(),
+                                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+                                 AddGaussianNoise(std=sigma)])
+    train_loader, valid_loader = get_cifar10(batch_size=trainer.batch_size, tf1=tf, tf2=tf)
 
+    initial_sigma = 0.1 
+    sigma_max = trainer.sigma 
 
     # Training of the model.
     for epoch in range(trainer.max_epochs):
         model.train()  
         model_predictor.train()
         n_iter = 0
+        sigma =  ((sigma_max - initial_sigma) / (trainer.max_epochs - 1)) * epoch + initial_sigma
         for (batch_view_1, batch_view_2), _ in train_loader:
             # Limiting training data for faster epochs.
             if n_iter  >= n_train_batches:
@@ -83,9 +86,8 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
             batch_view_1 = batch_view_1.to(trainer.device)
             batch_view_2 = batch_view_2.to(trainer.device)
             
-            # sigma = 0.1
-            # noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
-            # batch_view_1 += noise
+            noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
+            batch_view_1 += noise
 
             loss = trainer.update(batch_view_1, batch_view_2)
 
@@ -108,12 +110,9 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
                     break
 
                 batch_view_1 = batch_view_1.to(trainer.device)
+                noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
+                batch_view_1 += noise
                 batch_view_2 = batch_view_2.to(trainer.device)
-                
-                # sigma = 0.1
-                # noise = (sigma * torch.randn(batch_view_1.shape)).to(trainer.device)
-
-                # batch_view_1 += noise
                 val_loss += (trainer.update(batch_view_1, batch_view_2)).item()
                 val_niter += 1
         val_loss = val_loss / val_niter

@@ -14,12 +14,13 @@ from utils import _create_model_training_folder
 
 
 class BYOLTrainer:
-    def __init__(self, online_network, target_network, predictor, optimizer, device, pretrained=False, **params):
+    def __init__(self, online_network, target_network, predictor, optimizer, device, pretrained=False, use_amp=True, **params):
         self.online_network = online_network
         self.target_network = target_network
         self.optimizer = optimizer
         self.device = device
         self.pretrained = pretrained
+        self.use_amp = use_amp
         self.predictor = predictor
         self.max_epochs = params['max_epochs']
         self.writer = SummaryWriter()
@@ -58,32 +59,34 @@ class BYOLTrainer:
         val_loader = DataLoader(val_dataset, batch_size=self.batch_size,
                                   num_workers=self.num_workers, drop_last=True, shuffle=True)
 
-        
         freq_for_val = 1
+        scaler = torch.cuda.amp.GradScaler(enabled=self.use_amp)
 
         # Warm up schedular since we use ViT
-        if self.pretrained:
-            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', patience=2, verbose=True)
-        else:
-            warmup = 3 * len(train_loader)
-            max_iter = self.max_epochs * len(train_loader)
-            scheduler = CosineWarmupScheduler(self.optimizer, warmup=warmup, max_iters=max_iter)
+        # if self.pretrained:
+        scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=200, gamma=0.1 ,verbose=True)
+        # else:
+        #     warmup = 3 * len(train_loader)
+        #     max_iter = self.max_epochs * len(train_loader)
+        #     scheduler = CosineWarmupScheduler(self.optimizer, warmup=warmup, max_iters=max_iter)
 
         niter = 0
         model_checkpoints_folder = os.path.join(self.writer.log_dir, 'checkpoints')
 
         self.initializes_target_network()
         best_loss = np.inf
+        initial_sigma = 0.1 
         for epoch_counter in range(self.max_epochs):
             epoch_loss = 0
+            sigma =  ((self.sigma - initial_sigma) / (self.max_epochs - 1)) * epoch_counter + initial_sigma
+            self.writer.add_scalar('sigma', sigma, global_step=epoch_counter)
             for (batch_view_1, batch_view_2), _ in tqdm(train_loader, leave=False):
 
                 batch_view_1 = batch_view_1.to(self.device)
                 batch_view_2 = batch_view_2.to(self.device)
-                
-                # sigma =  self.sigma #0.1
-                # noise = (sigma * torch.randn(batch_view_1.shape)).to(self.device)
-                # batch_view_1 += noise
+                               
+                noise = (sigma * torch.randn(batch_view_1.shape)).to(self.device)
+                batch_view_1 += noise
 
                 if niter == 0:
                     grid = torchvision.utils.make_grid(batch_view_1[:32])
@@ -92,18 +95,22 @@ class BYOLTrainer:
                     grid = torchvision.utils.make_grid(batch_view_2[:32])
                     self.writer.add_image('views_2', grid, global_step=niter)
 
-                loss = self.update(batch_view_1, batch_view_2)
+                with torch.cuda.amp.autocast(enabled=self.use_amp):
+                    loss = self.update(batch_view_1, batch_view_2)
                 epoch_loss += loss.item() 
 
                 self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
-
-                self._update_target_network_parameters()  # update the key encoder
+                scaler.scale(loss).backward()
+                scaler.step(self.optimizer)
+                scaler.update()
+                # loss.backward()
+                # self.optimizer.step()
+                with torch.cuda.amp.autocast(enabled=self.use_amp):
+                    self._update_target_network_parameters()  # update the key encoder
                 niter += 1
-                if not self.pretrained:
-                    scheduler.step()
-                    self.writer.add_scalar('lr', scheduler.get_last_lr(), global_step=niter)
+                # if not self.pretrained:
+                #     scheduler.step()
+                    # self.writer.add_scalar('lr', scheduler.get_last_lr(), global_step=niter)
 
             if epoch_counter % freq_for_val == 0 or epoch_counter == self.max_epochs - 1:
                 val_loss = 0
@@ -111,6 +118,8 @@ class BYOLTrainer:
                 with torch.no_grad():
                     for (batch_view_1, batch_view_2), _ in val_loader:
                         batch_view_1 = batch_view_1.to(self.device)
+                        noise = (sigma * torch.randn(batch_view_1.shape)).to(self.device)
+                        batch_view_1 += noise
                         batch_view_2 = batch_view_2.to(self.device)
                         val_loss += self.update(batch_view_1, batch_view_2).item()
                         
@@ -121,15 +130,7 @@ class BYOLTrainer:
                     best_loss = val_loss
                     epoch_best_loss = epoch_counter
 
-            # if epoch_loss < best_loss:
-            #     self.save_model(os.path.join(model_checkpoints_folder, 'byol_model.pth'))
-            #     best_loss = epoch_loss
-            #     epoch_best_loss = epoch_counter
-                
-
-            if self.pretrained:
-                scheduler.step(val_loss)
-                # self.writer.add_scalar('lr', scheduler.get_last_lr(), global_step=epoch_counter)
+            scheduler.step()
             
             self.writer.add_scalar('loss', epoch_loss / len(train_loader), global_step=epoch_counter)
             print(f'End of epoch {epoch_counter}, Train Loss is: {(epoch_loss / len(train_loader)):.5f}, Val Loss is: {val_loss}, Best Val Loss is: {best_loss}, Best Loss Epoch is: {epoch_best_loss}')
