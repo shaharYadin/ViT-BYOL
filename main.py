@@ -2,13 +2,15 @@ import os
 
 import optuna
 import torch
+import numpy as np
 import torchvision.transforms as transforms
 import wandb
 import yaml
 from torchvision import datasets
+import matplotlib.pyplot as plt
 
 from check_similarity_per_layer import check_similarity_per_layer
-from classifier_inference import classifier_inference, load_weigths, save_imgs
+from classifier_inference import classifier_inference, load_weigths, save_imgs, create_embedding_and_plot_tsne
 from CosineWarmUp import CosineWarmupScheduler
 from data.multi_view_data_injector import MultiViewDataInjector
 from data.transforms import get_simclr_data_transforms
@@ -18,6 +20,7 @@ from models.resnet_base_network import ByolNet
 from optuna_exp import objective
 from our_transforms import AddGaussianNoise
 from trainer import BYOLTrainer, ClassifierTrainer
+
 
 print(torch.__version__)
 # torch.manual_seed(0)
@@ -41,7 +44,7 @@ def main():
                                  AddGaussianNoise(std=sigma)])
     else:
         tf = transforms.Compose([transforms.ToTensor(),
-                                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
+                                 transforms.Normalize(mean=[0.4914, 0.4822, 0.4465], std=[0.2023, 0.1994, 0.2010])])
         
         noisy_tf = transforms.Compose([transforms.ToTensor(),
                                        transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
@@ -97,20 +100,35 @@ def main():
     elif config['mode'] == 'test_classifier':
         
         test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=tf)
-        # noisy_test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=tf)
         byol_model, classifier_model, byol_time, classifier_time = load_weigths(config=config)
         classifier_inference(test_data=test_dataset, byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time)
         classifier_inference(test_data=test_dataset, byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time , noisy_inference=True, sigma=sigma)
 
         test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([tf, tf]))
         save_imgs(test_dataset, byol_model, classifier_model, sigma=sigma)
+        create_embedding_and_plot_tsne(test_dataset, byol_model, sigma=sigma)
     
     elif config['mode'] == 'check_similarity_per_layer':
         byol_model, _, _, _ = load_weigths(config=config)
         test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=MultiViewDataInjector([tf, tf])) 
         
         check_similarity_per_layer(byol_model, test_dataset, sigma=sigma)
-        
+    
+    elif config['mode'] == 'inference_for_different_sigmas':
+        test_dataset = datasets.CIFAR10("/tmp/ramdisk/data/", train=False, download=True, transform=tf)
+        byol_model, classifier_model, byol_time, classifier_time = load_weigths(config=config)
+        sigmas = np.arange(0, 1.55, 0.05)
+        accuracy_list = []
+        for sigma in sigmas:
+            accuracy = classifier_inference(test_data=test_dataset, byol=byol_model,classifier=classifier_model, byol_time=byol_time, classifier_time=classifier_time , noisy_inference=True, sigma=sigma, write_to_log=False)
+            accuracy_list.append(accuracy)
+        fig = plt.figure(figsize=(10,8))
+        ax = fig.add_subplot(1,1,1)
+        ax.plot(sigmas, accuracy_list)
+        ax.set_title('Accuracy for different sigmas, BYOL trained on sigma=0.2')
+        ax.set_xlabel('sigma')
+        ax.set_ylabel('Accuracy')
+        fig.savefig('accuracy_vs_sigma.png')
     else:
         raise NotImplementedError()
 

@@ -71,6 +71,7 @@ def define_model(train_byol=True):
                                     optimizer=classifier_optimizer,
                                     classifier=classifier_model,
                                     predictor=predictor,
+                                    pretrained=config['network']['pretrained'],
                                     device=device,
                                     **config['classifier_trainer'])
         return trainer
