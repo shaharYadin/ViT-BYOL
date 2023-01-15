@@ -1,3 +1,4 @@
+
 <h1 align="center">Vision Transformer + BYOL to improve classification of noisy images</h1>
 <h2 align="center">Final project for the Technion's EE Deep Learning course (046211)
 </h2> 
@@ -9,12 +10,11 @@
   </p>
 
 
-
 ## Background
 The purpose of our project is training a classifier with robustness to noisy images.
 We tackle the problem by the following method. First we train a BYOL, such that one of the augmentations is adding 
 gaussian noise and the other is the identity. This way the BYOL learns a close representation for the clean image and its noisy version.
-We chose the encoder model ($f_\theta$) of the BYOL to be a Vision Transformer.
+We chose the encoder model $\(f_\theta\)$ of the BYOL to be a Vision Transformer.
 After the BYOL model is trained, we train a linear classifier on the representation of the clean images.
 In inference, we show that although the classifier haven't seen noisy images, it performs well.
 
