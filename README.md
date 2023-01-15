@@ -31,7 +31,7 @@ In inference, we show that although the classifier haven't seen noisy images, it
 ### t-SNE on the clean & noisy images' representation 
 ![Image of tsne](./results/tsne_2D_on_embedding_for_presentation_2048.png)
 ###  Accuracy for different sigmas (BYOL trained on sigma = 0.2)
-![Image of accuracy](./assets/model_accuracy.png)
+![Image of accuracy](./assets/model_accuracy.PNG)
 
 
 ## Installation
