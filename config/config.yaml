@@ -9,10 +9,6 @@ network:
     mlp_hidden_size: 512
     projection_size: 128
 
-data_transforms:
-  s: 1
-  input_shape: (96,96,3)
-
 trainer: #byol trainer
   batch_size: 128
   m: 0.996 # momentum update
@@ -28,14 +24,12 @@ classifier_trainer:
   max_epochs: 200
   num_workers: 6
 
-mode: 'inference_for_different_sigmas' #optuna/train_byol/train_classifier/test_classifier/check_similarity_per_layer/inference_for_different_sigmas
+mode: 'train_byol' #optuna/train_byol/train_classifier/test_classifier/check_similarity_per_layer/inference_for_different_sigmas
 
 optimizer:
   params: #byol_params 
-    lr: 0.00001
-    # momentum: 0.9
-    weight_decay: 0.0 #0.0004
+    lr: 0.00001 #if pretrained = False use higher lr (0.0001)
+    weight_decay: 0.0
   classifier_params:
     lr: 0.0003
-    # momentum: 0.9
-    weight_decay: 0.0 #0.0004
+    weight_decay: 0.0

@@ -1,19 +1,12 @@
 import optuna
-import os
 import torch
-import torch.nn.functional as F
 import torchvision
-from torch.utils.data.dataloader import DataLoader
-from torch.utils.tensorboard import SummaryWriter
-import torch.optim as optim
-from data.multi_view_data_injector import MultiViewDataInjector
-
-from utils import _create_model_training_folder
-from CosineWarmUp import CosineWarmupScheduler
-from trainer import BYOLTrainer
 import torchvision.transforms as transforms
+
+from data.multi_view_data_injector import MultiViewDataInjector
 from define_model import define_model
-from our_transforms import AddGaussianNoise
+from data.our_transforms import AddGaussianNoise
+
 
 def get_cifar10(batch_size, tf1, tf2):
     dataset= torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=True, download=True, transform=MultiViewDataInjector([tf1, tf2]))

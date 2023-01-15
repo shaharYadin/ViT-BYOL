@@ -9,7 +9,6 @@ from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from CosineWarmUp import CosineWarmupScheduler
 from utils import _create_model_training_folder
 
 

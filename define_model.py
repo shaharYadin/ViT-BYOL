@@ -2,14 +2,12 @@ import os
 
 import torch
 import yaml
-import torchvision.transforms as transforms
-from torchvision import datasets
-from data.multi_view_data_injector import MultiViewDataInjector
-from data.transforms import get_simclr_data_transforms
-from models.mlp_head import MLPHead
-from models.resnet_base_network import ByolNet
+
+from models.byol_network import ByolNet
 from models.classifier import classifier
-from trainer import BYOLTrainer,ClassifierTrainer
+from models.mlp_head import MLPHead
+from trainer import BYOLTrainer, ClassifierTrainer
+
 
 def define_model(train_byol=True):
     config = yaml.load(open("./config/config.yaml", "r"), Loader=yaml.FullLoader)

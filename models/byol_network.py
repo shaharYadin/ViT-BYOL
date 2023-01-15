@@ -1,9 +1,6 @@
-from collections import OrderedDict
 import torchvision.models as models
 import torch
-import torch.nn as nn
 from models.mlp_head import MLPHead
-from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
 from models.vit import ViT
 

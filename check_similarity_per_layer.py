@@ -1,24 +1,9 @@
-import os
-
 import matplotlib.pyplot as plt
-import optuna
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as transforms
-import yaml
-from torchvision import datasets
 from tqdm import tqdm
 
-from classifier_inference import classifier_inference, load_weigths
-from CosineWarmUp import CosineWarmupScheduler
-from data.multi_view_data_injector import MultiViewDataInjector
-from data.transforms import get_simclr_data_transforms
-from define_model import define_model
-from models.mlp_head import MLPHead
-from models.resnet_base_network import ByolNet
-from optuna_exp import objective
-from our_transforms import AddGaussianNoise
-from trainer import BYOLTrainer, ClassifierTrainer
+from models.byol_network import ByolNet
 
 
 def regression_loss(x, y):
