@@ -33,7 +33,7 @@ In inference, we show that although the classifier haven't seen noisy images, it
 ###  Accuracy for different sigmas (BYOL trained on sigma = 0.2)
 <p float="left">
   <img src="./assets/model_accuracy.PNG" width="350">
-  <img src="./assets/accuracy_table.PNG" width="340" />
+  <img src="./assets/accuracy_table.PNG" width="327.5" />
 </p>
 
 
