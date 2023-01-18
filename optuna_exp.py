@@ -5,17 +5,10 @@ import torchvision.transforms as transforms
 
 from data.multi_view_data_injector import MultiViewDataInjector
 from define_model import define_model
-from data.our_transforms import AddGaussianNoise
-
 
 def get_cifar10(batch_size, tf1, tf2):
     dataset= torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=True, download=True, transform=MultiViewDataInjector([tf1, tf2]))
     
-    # valid_loader = torch.utils.data.DataLoader(
-    #     torchvision.datasets.CIFAR10('/tmp/ramdisk/data/', train=False, transform=MultiViewDataInjector([transforms.ToTensor(), transforms.ToTensor()])),
-    #     batch_size=batch_size,
-    #     shuffle=True,
-    # )
     val_size = int(len(dataset)*0.2)
     train_size = len(dataset) - val_size
     train_data, valid_data = torch.utils.data.random_split(dataset, [train_size, val_size])
@@ -44,22 +37,12 @@ def objective(trial,n_train_batches=30,n_valid_batches=10):
     # Generate the optimizers.
     lr = trial.suggest_float("lr", 1e-4, 1e-1, log=True)  # log=True, will use log scale to interplolate between lr
     trainer.optimizer = torch.optim.RAdam(list(model.parameters()) + list(model_predictor.parameters()), lr=lr, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-    # optimizer_name = trial.suggest_categorical("optimizer", ["Adam", "RMSprop", "SGD"])
-    # trainer.optimizer = getattr(optim, optimizer_name)(model.parameters(), lr=lr)
-    # alternative version
-    # optimizer = trial.suggest_categorical("optimizer", [optim.Adam, optim.RMSprop, optim.SGD])
 
     # Get the CIFAR10 dataset.
-
-    
     tf = transforms.Compose([transforms.ToTensor(),
                                  transforms.Resize(size=(224, 224)),
                                  transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])])
 
-    noisy_tf = transforms.Compose([transforms.Resize(size=(224, 224)),
-                                 transforms.ToTensor(),
-                                 transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
-                                 AddGaussianNoise(std=sigma)])
     train_loader, valid_loader = get_cifar10(batch_size=trainer.batch_size, tf1=tf, tf2=tf)
 
     initial_sigma = 0.1 
